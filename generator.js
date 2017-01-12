@@ -1,6 +1,14 @@
 /* eslint-env browser, node */
 /* eslint no-console:0 */
 
+/****           Use These Variables for your search              ****/
+/**** for semester use the semester you are targeting, capitalized  */
+/**** for query, enter your search query for the semester           */
+
+var semester = "Winter 2017"
+var query = "online"
+
+
 var Nightmare = require('nightmare');
 require('nightmare-helpers')(Nightmare);
 require('nightmare-iframe-manager')(Nightmare);
@@ -19,16 +27,6 @@ var nightmare = Nightmare({
 var authData = JSON.parse(fs.readFileSync("./auth.json"));
 var links = []
 var i = 1;
-/*function analyzePage(nightmare, isLastPage){
-    //call the scrape, and if next page is null, then call done to end
-    if(isLastPage === true){
-        scrapePage(nightmare);
-        return;
-    } else {
-        scrapePage(nightmare);
-        goToNextPage(nightmare);
-    }
-}*/
 
 function scrapePage(nightmare){
     //scrape the page, and log the result
@@ -45,7 +43,8 @@ function scrapePage(nightmare){
         if(nextButton.getAttribute('aria-disabled') == 'true'){
             isLastPage = true
         }
-        return {tempLinks: tempLinks, isLastPage: isLastPage}
+        var currPage = document.querySelector('tbody tr:nth-child(1) th a').innerText;
+        return {tempLinks: tempLinks, isLastPage: isLastPage, currPage: currPage}
     })
     .then(function(obj){
         links = links.concat(obj.tempLinks)
@@ -55,22 +54,23 @@ function scrapePage(nightmare){
             done(nightmare);
             return
         } else {
-            goToNextPage(nightmare)
+            goToNextPage(nightmare, obj.currPage)
         }
     }).catch(function (error) {
         console.error('Failed:', error);
     });
 }
 
-function goToNextPage(nightmare){
+function goToNextPage(nightmare, currPage){
     //go to the next page, and then analyze it
     nightmare
     .click('a[title="Next Page"]')
-    .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
-    .wait(10000)
+    .wait(function(currPage){
+        return document.querySelector('tbody tr:nth-child(1) th a').innerText != currPage
+    }, currPage)
     .then(function(){
         scrapePage(nightmare)
-    });
+    })
 }
 
 function done(nightmare){
@@ -87,38 +87,40 @@ function done(nightmare){
     });
 }
 
-nightmare
-    .viewport(1200, 900)
-    .goto('https://byui.brightspace.com/d2l/login?noredirect=true')
-    .wait('#password').insert('#userName', authData.username)
-    .insert('#password', authData.password)
-//Click login
-    .click('#formId div a') 
+function clearFilter(nightmare){
+    nightmare
+    .click("a[title='Clear " + semester + " Semester filter']")
+    .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
     .wait(1000)
-    .waitURL('/d2l/home')
-    .goto('https://byui.brightspace.com/d2l/le/manageCourses/search/6606')
-    .wait(5000)
+    .then(function(){
+        contNightmare(nightmare)
+    })
+}
+
+function contNightmare(nightmare){
+    nightmare
     .click('#AdvancedSearch div > div:nth-child(1) div div div > div:nth-child(1) div div a')
-    .wait(1000)
+    .wait('iframe')
     .enterIFrame('iframe')
     .wait('.d2l-searchsimple-input')
 //Type Semester
-    .type('.d2l-searchsimple-input', 'winter 2017')
+    .type('.d2l-searchsimple-input', semester)
     .click('.d2l-searchsimple-search-link')
 //Wait for semester to appear
-    .wait(function(){
-    return document.querySelector('.d2l-datalist-item-content .d2l-label').innerText.match('Winter 2017') !== null
-    })
+    .wait(function(semester){
+    return document.querySelector('.d2l-datalist-item-content .d2l-label').innerText.match(semester) !== null
+    }, semester)
     .check('input[type="radio"]')
     .click('.vui-button-primary')
     .exitIFrame()
     .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
 //type query
-    .insert('.d2l-searchsimple-input', 'online')
+    .insert('.d2l-searchsimple-input', query)
     .click('.d2l-searchsimple-search-link')
     .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
     .select('.d2l-grid-footer-wrapper select', '100')
     .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
+    .wait(5000)
     .then(function(){
         console.log('Navigation Successful, scraping started')
         scrapePage(nightmare)
@@ -126,3 +128,32 @@ nightmare
     .catch(function (error) {
         console.error('Failed:', error);
     });
+    
+    }
+
+nightmare
+    .viewport(1200, 900)
+    .goto('https://byui.brightspace.com/d2l/login?noredirect=true')
+    .wait('#password').insert('#userName', authData.username)
+    .insert('#password', authData.password)
+//Click login
+    .click('#formId div a')
+    .waitURL('/d2l/home')
+    .goto('https://byui.brightspace.com/d2l/le/manageCourses/search/6606')
+    .evaluate(function(semester){
+        var isFilter
+        if(document.querySelector("div[title='" + semester + "']") !== null){
+            isFilter = true
+        } else {
+            isFilter = false
+        }
+            return isFilter
+    }, semester)
+    .then(function(isFilter){
+        if(isFilter){
+            clearFilter(nightmare)
+        } else {
+            contNightmare(nightmare)
+        }
+    })
+
