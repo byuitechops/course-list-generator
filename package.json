@@ -3,7 +3,7 @@
   "version": "1.0.1",
   "description": "Generate a list of course links based  on a semester and a query as the first two arguements. For example, run by typing npm course_list_generator 'Winter 2017' 'online'",
   "bin": {
-        "template-changer": "cli.js"
+        "course-list-generator": "cli.js"
     },
   "scripts": {
     "test": "npm course-list-generator 'Winter 2017' 'online'"
