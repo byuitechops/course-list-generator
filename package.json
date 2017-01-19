@@ -1,12 +1,12 @@
 {
   "name": "course-list-generator",
-  "version": "1.0.1",
-  "description": "Generate a list of course links based  on a semester and a query as the first two arguements. For example, run by typing npm course_list_generator 'Winter 2017' 'online'",
+  "version": "1.0.3",
+  "description": "Generate a list of course links based  on a semester and a query",
   "bin": {
         "course-list-generator": "cli.js"
     },
   "scripts": {
-    "test": "npm course-list-generator 'Winter 2017' 'online'"
+    "test": "node course-list-generator"
   },
   "preferGlobal": true,
   "repository": {
@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/byuicampuscd/course-list-generator#readme",
     "dependencies": {
-        "nightmare": "^2.9.1"
+        "nightmare": "^2.9.1",
+        "d3-dsv": "^1.0.3"
     }
 }

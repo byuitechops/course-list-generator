@@ -5,14 +5,38 @@
 /**** for semester use the semester you are targeting, capitalized  */
 /**** for query, enter your search query for the semester           */
 
-var semester = "Winter 2017"
-var query = "online"
+/*var semester = process.argv[2]
+var query = process.argv[3]
 
+if(semester == null || query == null){
+    console.log('To run the generator, call the program with the semester and search query like this: course-list-generator "Winter 2017" "online"')
+    return
+}*/
 
 var Nightmare = require('nightmare');
 require('nightmare-helpers')(Nightmare);
 require('nightmare-iframe-manager')(Nightmare);
-
+var prompt = require('prompt')
+var properties = [
+    {
+        name: 'username', 
+        required: true
+    },
+    {
+        name: 'password',
+        hidden: true, 
+        replace: '*',
+        required: true
+    },
+    {
+        name: 'semester',
+        message: 'Type in the semester in this format: Winter 2017'
+    },
+    {
+        name: 'searchQuery',
+        message: 'Type your search query'
+    }
+  ];
 var fs = require('fs')
 var dsv = require('d3-dsv')
 var nightmare = Nightmare({
@@ -24,7 +48,7 @@ var nightmare = Nightmare({
     alwaysOnTop: false,
     waitTimeout: 100 * 1000
     });
-var authData = JSON.parse(fs.readFileSync("./auth.json"));
+var promptData = {}
 var links = []
 var i = 1;
 
@@ -130,12 +154,12 @@ function contNightmare(nightmare){
     });
     
     }
-
+function startNightmare(nightmare){
 nightmare
     .viewport(1200, 900)
     .goto('https://byui.brightspace.com/d2l/login?noredirect=true')
-    .wait('#password').insert('#userName', authData.username)
-    .insert('#password', authData.password)
+    .wait('#password').insert('#userName', promptData.username)
+    .insert('#password', promptData.password)
 //Click login
     .click('#formId div a')
     .waitURL('/d2l/home')
@@ -156,4 +180,20 @@ nightmare
             contNightmare(nightmare)
         }
     })
+}
 
+//Get Username and Password for D2l
+prompt.start();
+
+prompt.get(properties, function(err, result){
+    if(err) {return onErr(err)}
+    promptData = {username: result.username, password: result.password}
+    semester = result.semester
+    query = result.searchQuery
+    console.log('Thanks, logging in')
+    startNightmare(nightmare)
+})
+function onErr(err) {
+    console.log(err);
+    return 1;
+}
