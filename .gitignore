@@ -1,4 +1,4 @@
 node_modules/
 /auth.json
-/ols.csv
+/ols*.csv
 /npm-debug.log

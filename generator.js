@@ -19,6 +19,10 @@ require('nightmare-iframe-manager')(Nightmare);
 var prompt = require('prompt')
 var properties = [
     {
+        name: 'domain',
+        message: "Which domain? Type 'p' for Pathway and anything else for BYUI"
+    },
+    {
         name: 'username',
         required: true
     },
@@ -49,6 +53,8 @@ var nightmare = Nightmare({
     waitTimeout: 100 * 1000
 });
 var promptData = {}
+var domainOptions = ["https://byui.brightspace.com", "https://pathway.brightspace.com"];
+var urlPrefix = domainOptions[0];
 var links = []
 var i = 1;
 var semester, query;
@@ -56,12 +62,16 @@ var semester, query;
 function scrapePage(nightmare) {
     //scrape the page, and log the result
     nightmare
-        .evaluate(function () {
+        .evaluate(function (urlPrefix) {
             var tempLinks = []
             var nodes = document.querySelectorAll('tbody tr a.vui-link')
             for (var i = 0; i < nodes.length; i++) {
+                var href = nodes[i].getAttribute('href');
                 tempLinks.push({
-                    link: nodes[i].getAttribute('href'),
+                    //just the number
+                    ou: href.match(/home\/(\d+)/)[1],
+                    //the whole link for editing and incase of leading 0 that excel will drop
+                    link: urlPrefix + href,
                     name: nodes[i].innerHTML
                 })
             }
@@ -76,7 +86,7 @@ function scrapePage(nightmare) {
                 isLastPage: isLastPage,
                 currPage: currPage
             }
-        })
+        }, urlPrefix)
         .then(function (obj) {
             links = links.concat(obj.tempLinks)
             console.log("scraped page " + i)
@@ -104,15 +114,47 @@ function goToNextPage(nightmare, currPage) {
         })
 }
 
+function getFreeFileName() {
+    function getI(i) {
+        return i > 0 ? i : '';
+    }
+
+    var fs = require('fs'),
+        name = 'ols',
+        end = '.csv',
+        i = 0,
+        gotOne = false,
+        fullname;
+
+
+
+
+    while (!gotOne) {
+        try {
+            fullname = name + getI(i) + end;
+            fs.accessSync(fullname, fs.constants.F_OK);
+            //if we make it to here then the file exist try again
+            i += 1;
+        } catch (e) {
+            //the file does not exist yeah!
+            gotOne = true;
+        }
+    }
+
+    return fullname;
+}
+
 function done(nightmare) {
     //close the view, and save the file
     nightmare
         .end()
         .then(function () {
             console.log('Process Complete!')
-            var coursesCSV = (dsv.csvFormat(links))
-            fs.writeFileSync('ols.csv', coursesCSV)
-            console.log('File Written to ols.csv')
+            var coursesCSV = (dsv.csvFormat(links)),
+                fileName = getFreeFileName();
+
+            fs.writeFileSync(fileName, coursesCSV)
+            console.log('File Written to ' + fileName);
         }).catch(function (error) {
             console.error('Failed:', error);
         });
@@ -165,13 +207,13 @@ function contNightmare(nightmare) {
 function startNightmare(nightmare) {
     nightmare
         .viewport(1200, 900)
-        .goto('https://byui.brightspace.com/d2l/login?noredirect=true')
+        .goto(urlPrefix + '/d2l/login?noredirect=true')
         .wait('#password').insert('#userName', promptData.username)
         .insert('#password', promptData.password)
         //Click login
         .click('#formId div a')
         .waitURL('/d2l/home')
-        .goto('https://byui.brightspace.com/d2l/le/manageCourses/search/6606')
+        .goto(urlPrefix + '/d2l/le/manageCourses/search/6606')
         .evaluate(function (semester) {
             var isFilter
             if (document.querySelector("div[title='" + semester + "']") !== null) {
@@ -200,6 +242,9 @@ prompt.get(properties, function (err, result) {
     promptData = {
         username: result.username,
         password: result.password
+    }
+    if (result.domain.toLowerCase() === 'p') {
+        urlPrefix = domainOptions[1];
     }
     semester = result.semester
     query = result.searchQuery
