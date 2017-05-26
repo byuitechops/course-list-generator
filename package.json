@@ -18,8 +18,6 @@
     "list",
     "generator"
   ],
-  "author": "Ben Harker",
-  "license": "ISC",
   "bugs": {
     "url": "https://github.com/byuicampuscd/course-list-generator/issues"
   },
@@ -30,5 +28,7 @@
     "nightmare-helpers": "git+https://github.com/byuicampuscd/nightmare-helpers.git",
     "nightmare-iframe-manager": "0.0.4",
     "prompt": "^1.0.0"
-  }
+  },
+  "author": "Ben Harker",
+  "license": "ISC"
 }
