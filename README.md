@@ -1,6 +1,6 @@
 # course-list-generator
 
-This program automates the searching, and compiling of campus course OL links
+This program automates the Advanced Course Search Tool in d2l, and compiling of campus course OL links
 
 Follow the prompts to log in to d2l, select the semester, and enter your search query
 
