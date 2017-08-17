@@ -64,7 +64,7 @@ function scrapePage(nightmare) {
     nightmare
         .evaluate(function (urlPrefix) {
             var tempLinks = []
-            var nodes = document.querySelectorAll('tbody tr a.vui-link')
+            var nodes = document.querySelectorAll('tbody tr a.d2l-link')
             for (var i = 0; i < nodes.length; i++) {
                 var href = nodes[i].getAttribute('href');
                 tempLinks.push({
@@ -172,25 +172,25 @@ function clearFilter(nightmare) {
 
 function contNightmare(nightmare) {
     nightmare
-        .click('#AdvancedSearch div > div:nth-child(1) div div div > div:nth-child(1) div div a')
+        .click('div.d2l-form > div > div > div:nth-child(1) .d2l-placeholder .d2l-button') //SELECT SEMESTER
         .wait('iframe')
         .enterIFrame('iframe')
-        .wait('.d2l-searchsimple-input')
+        .wait('.d2l-searchsimple input.vui-input').wait(1000) //search box
         //Type Semester
-        .type('.d2l-searchsimple-input', semester)
-        .click('.d2l-searchsimple-search-link')
+        .type('.d2l-searchsimple input.vui-input', semester)
+        .click('.d2l-searchsimple input.vui-input-search-button') //search button
         //Wait for semester to appear
         .wait(function (semester) {
             return document.querySelector('.d2l-datalist-item-content .d2l-label').innerText.match(semester) !== null
         }, semester)
         .check('input[type="radio"]')
-        .click('.vui-button-primary')
+        .click('.d2l-dialog-button-group .d2l-button:nth-child(1)') // update semester button!
         .exitIFrame()
         .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
         //type query
-        .insert('.d2l-searchsimple-input', query)
-        .click('.d2l-searchsimple-search-link')
-        .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
+        .insert('.d2l-searchsimple input.vui-input', query) // search box
+        .click('.d2l-searchsimple input.vui-input-search-button') //search button
+        .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)") //Display 100 results on 1 page
         .select('.d2l-grid-footer-wrapper select', '100')
         .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
         .wait(5000)
@@ -211,7 +211,7 @@ function startNightmare(nightmare) {
         .wait('#password').insert('#userName', promptData.username)
         .insert('#password', promptData.password)
         //Click login
-        .click('#formId div a')
+        .click('.d2l-button')
         .waitURL('/d2l/home')
         .goto(urlPrefix + '/d2l/le/manageCourses/search/6606')
         .evaluate(function (semester) {

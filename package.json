@@ -23,9 +23,9 @@
   },
   "homepage": "https://github.com/byuicampuscd/course-list-generator#readme",
   "dependencies": {
-    "d3-dsv": "^1.0.3",
-    "nightmare": "^2.9.1",
-    "nightmare-helpers": "git+https://github.com/byuicampuscd/nightmare-helpers.git",
+    "d3-dsv": "^1.0.5",
+    "nightmare": "^2.10.0",
+    "nightmare-helpers": "git+https://github.com/byuitechops/nightmare-helpers.git",
     "nightmare-iframe-manager": "0.0.4",
     "prompt": "^1.0.0"
   },
