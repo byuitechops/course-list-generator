@@ -45,6 +45,9 @@ var fs = require('fs')
 var dsv = require('d3-dsv')
 var nightmare = Nightmare({
     show: true,
+    openDevTools: {
+        mode: 'detach'
+    },
     webPreferences: {
         webSecurity: false,
     },
@@ -162,15 +165,15 @@ function done(nightmare) {
 
 function clearFilter(nightmare) {
     nightmare
-        .click("a[title='Clear " + semester + " Semester filter']")
+        .click("a[title$='Semester filter']") //clear filter button
         .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
         .wait(1000)
         .then(function () {
-            contNightmare(nightmare)
+            selectSemester(nightmare);
         })
 }
 
-function contNightmare(nightmare) {
+function selectSemester(nightmare) {
     nightmare
         .click('div.d2l-form > div > div > div:nth-child(1) .d2l-placeholder .d2l-button') //SELECT SEMESTER
         .wait('iframe')
@@ -187,10 +190,18 @@ function contNightmare(nightmare) {
         .click('.d2l-dialog-button-group .d2l-button:nth-child(1)') // update semester button!
         .exitIFrame()
         .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
+        .wait(1000)
+        .then(function () {
+            searchForCourses(nightmare);
+        });
+}
+
+function searchForCourses(nightmare) {
+    nightmare
         //type query
         .insert('.d2l-searchsimple input.vui-input', query) // search box
         .click('.d2l-searchsimple input.vui-input-search-button') //search button
-        .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)") //Display 100 results on 1 page
+        .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)") //Display 100 results per page
         .select('.d2l-grid-footer-wrapper select', '100')
         .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
         .wait(5000)
@@ -217,9 +228,9 @@ function startNightmare(nightmare) {
         .evaluate(function (semester) {
             var isFilter
             if (document.querySelector("div[title='" + semester + "']") !== null) {
-                isFilter = true
-            } else {
                 isFilter = false
+            } else {
+                isFilter = true
             }
             return isFilter
         }, semester)
@@ -227,7 +238,7 @@ function startNightmare(nightmare) {
             if (isFilter) {
                 clearFilter(nightmare)
             } else {
-                contNightmare(nightmare)
+                searchForCourses(nightmare)
             }
         })
 }
