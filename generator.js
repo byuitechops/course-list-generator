@@ -228,9 +228,11 @@ function startNightmare(nightmare) {
         .evaluate(function (semester) {
             var isFilter
             if (document.querySelector("div[title='" + semester + "']") !== null) {
-                isFilter = false
+                isFilter = true;
+                console.log("no filter")
             } else {
-                isFilter = true
+                isFilter = false;
+                console.log("yes filter")
             }
             return isFilter
         }, semester)
@@ -238,7 +240,7 @@ function startNightmare(nightmare) {
             if (isFilter) {
                 clearFilter(nightmare)
             } else {
-                searchForCourses(nightmare)
+                selectSemester(nightmare)
             }
         })
 }
