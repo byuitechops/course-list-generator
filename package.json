@@ -2,6 +2,7 @@
   "name": "course-list-generator",
   "version": "1.0.3",
   "description": "Generate a list of course links based on a semester and a query",
+  "main": "cli.js",
   "bin": {
     "course-list-generator": "cli.js"
   },
