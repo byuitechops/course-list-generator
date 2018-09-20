@@ -1,3 +1,3 @@
 #!/usr/bin/env node
 
-require('./generator.js');
+require('./generator.js')();
