@@ -12,36 +12,23 @@ if(semester == null || query == null){
     console.log('To run the generator, call the program with the semester and search query like this: course-list-generator "Winter 2017" "online"')
     return
 }*/
-module.exports = function () {
+module.exports = function (customFileName, finalCB) {
     var Nightmare = require('nightmare');
     require('nightmare-helpers')(Nightmare);
     require('nightmare-iframe-manager')(Nightmare);
-    var prompt = require('prompt')
+    var prompt = require('prompt');
     var properties = [{
-            name: 'domain',
-            message: "Which domain? Type 'p' for Pathway and anything else for BYUI"
-        },
-        {
-            name: 'username',
-            required: true
-        },
-        {
-            name: 'password',
-            hidden: true,
-            replace: '*',
-            required: true
-        },
-        {
-            name: 'semester',
-            message: 'Type in the semester in this format: Winter 2017'
-        },
-        {
-            name: 'searchQuery',
-            message: 'Type your search query'
-        }
-    ];
-    var fs = require('fs')
-    var dsv = require('d3-dsv')
+        name: 'domain',
+        message: 'Which domain? Type \'p\' for Pathway and anything else for BYUI'
+    }, {
+        name: 'semester',
+        message: 'Type in the semester in this format: Winter 2017'
+    }, {
+        name: 'searchQuery',
+        message: 'Type your search query'
+    }];
+    var fs = require('fs');
+    var dsv = require('d3-dsv');
     var nightmare = Nightmare({
         show: true,
         openDevTools: {
@@ -54,19 +41,40 @@ module.exports = function () {
         alwaysOnTop: false,
         waitTimeout: 100 * 1000
     });
-    var promptData = {}
-    var domainOptions = ["https://byui.brightspace.com", "https://pathway.brightspace.com"];
+    var promptData = {};
+    var domainOptions = ['https://byui.brightspace.com', 'https://pathway.brightspace.com'];
     var urlPrefix = domainOptions[0];
-    var links = []
+    var links = [];
     var i = 1;
     var semester, query;
+
+    /* ask for password & username if not saved as env variables */
+    if (!process.env.PASS) {
+        properties.push({
+            name: 'username',
+            required: true
+        });
+    } else {
+        promptData.password = process.env.PASS;
+    }
+
+    if (!process.env.USR) {
+        properties.push({
+            name: 'password',
+            hidden: true,
+            replace: '*',
+            required: true
+        });
+    } else {
+        promptData.username = process.env.USR;
+    }
 
     function scrapePage(nightmare) {
         //scrape the page, and log the result
         nightmare
             .evaluate(function (urlPrefix) {
-                var tempLinks = []
-                var nodes = document.querySelectorAll('tbody tr a.d2l-link')
+                var tempLinks = [];
+                var nodes = document.querySelectorAll('tbody tr a.d2l-link');
                 for (var i = 0; i < nodes.length; i++) {
                     var href = nodes[i].getAttribute('href');
                     tempLinks.push({
@@ -75,29 +83,29 @@ module.exports = function () {
                         //the whole link for editing and incase of leading 0 that excel will drop
                         link: urlPrefix + href,
                         name: nodes[i].innerHTML
-                    })
+                    });
                 }
-                var isLastPage
-                var nextButton = document.querySelector('a[title="Next Page"]')
+                var isLastPage;
+                var nextButton = document.querySelector('a[title="Next Page"]');
                 if (nextButton.getAttribute('aria-disabled') == 'true') {
-                    isLastPage = true
+                    isLastPage = true;
                 }
                 var currPage = document.querySelector('tbody tr:nth-child(1) th a').innerText;
                 return {
                     tempLinks: tempLinks,
                     isLastPage: isLastPage,
                     currPage: currPage
-                }
+                };
             }, urlPrefix)
             .then(function (obj) {
-                links = links.concat(obj.tempLinks)
-                console.log("scraped page " + i)
-                i++
+                links = links.concat(obj.tempLinks);
+                console.log('scraped page ' + i);
+                i++;
                 if (obj.isLastPage) {
                     done(nightmare);
-                    return
+                    return;
                 } else {
-                    goToNextPage(nightmare, obj.currPage)
+                    goToNextPage(nightmare, obj.currPage);
                 }
             }).catch(function (error) {
                 console.error('Failed:', error);
@@ -109,11 +117,11 @@ module.exports = function () {
         nightmare
             .click('a[title="Next Page"]')
             .wait(function (currPage) {
-                return document.querySelector('tbody tr:nth-child(1) th a').innerText != currPage
+                return document.querySelector('tbody tr:nth-child(1) th a').innerText != currPage;
             }, currPage)
             .then(function () {
-                scrapePage(nightmare)
-            })
+                scrapePage(nightmare);
+            });
     }
 
     function getFreeFileName() {
@@ -128,8 +136,9 @@ module.exports = function () {
             gotOne = false,
             fullname;
 
-
-
+        if (customFileName) {
+            name = customFileName.replace('.csv', '');
+        }
 
         while (!gotOne) {
             try {
@@ -151,25 +160,34 @@ module.exports = function () {
         nightmare
             .end()
             .then(function () {
-                console.log('Process Complete!')
-                var coursesCSV = (dsv.csvFormat(links)),
+                console.log('Process Complete!');
+                var coursesCSV = dsv.csvFormat(links),
                     fileName = getFreeFileName();
 
-                fs.writeFileSync(fileName, coursesCSV)
+                fs.writeFileSync(fileName, coursesCSV);
+                if (finalCB) {
+                    finalCB(null, fileName);
+                    return;
+                }
                 console.log('File Written to ' + fileName);
+
             }).catch(function (error) {
+                if (finalCB) {
+                    finalCB(error);
+                    return;
+                }
                 console.error('Failed:', error);
             });
     }
 
     function clearFilter(nightmare) {
         nightmare
-            .click("a[title$='Semester filter']") //clear filter button
-            .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
+            .click('a[title$=\'Semester filter\']') //clear filter button
+            .wait('.d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)')
             .wait(1000)
             .then(function () {
                 selectSemester(nightmare);
-            })
+            });
     }
 
     function selectSemester(nightmare) {
@@ -183,12 +201,12 @@ module.exports = function () {
             .click('.d2l-searchsimple input.vui-input-search-button') //search button
             //Wait for semester to appear
             .wait(function (semester) {
-                return document.querySelector('.d2l-datalist-item-content .d2l-label').innerText.match(semester) !== null
+                return document.querySelector('.d2l-datalist-item-content .d2l-label').innerText.match(semester) !== null;
             }, semester)
             .check('input[type="radio"]')
             .click('.d2l-dialog-button-group .d2l-button:nth-child(1)') // update semester button!
             .exitIFrame()
-            .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
+            .wait('.d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)')
             .wait(1000)
             .then(function () {
                 searchForCourses(nightmare);
@@ -200,13 +218,13 @@ module.exports = function () {
             //type query
             .insert('.d2l-searchsimple input.vui-input', query) // search box
             .click('.d2l-searchsimple input.vui-input-search-button') //search button
-            .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)") //Display 100 results per page
+            .wait('.d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)') //Display 100 results per page
             .select('.d2l-grid-footer-wrapper select', '100')
-            .wait(".d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)")
+            .wait('.d2l-page-message-container:last-of-type .d2l-page-message:not(.d2l-hidden)')
             .wait(5000)
             .then(function () {
-                console.log('Navigation Successful, scraping started')
-                scrapePage(nightmare)
+                console.log('Navigation Successful, scraping started');
+                scrapePage(nightmare);
             })
             .catch(function (error) {
                 console.error('Failed:', error);
@@ -225,23 +243,23 @@ module.exports = function () {
             .waitURL('/d2l/home')
             .goto(urlPrefix + '/d2l/le/manageCourses/search/6606')
             .evaluate(function (semester) {
-                var isFilter
-                if (document.querySelector("div[title='" + semester + "']") !== null) {
+                var isFilter;
+                if (document.querySelector('div[title=\'' + semester + '\']') !== null) {
                     isFilter = true;
-                    console.log("no filter")
+                    console.log('no filter');
                 } else {
                     isFilter = false;
-                    console.log("yes filter")
+                    console.log('yes filter');
                 }
-                return isFilter
+                return isFilter;
             }, semester)
             .then(function (isFilter) {
                 if (isFilter) {
-                    clearFilter(nightmare)
+                    clearFilter(nightmare);
                 } else {
-                    selectSemester(nightmare)
+                    selectSemester(nightmare);
                 }
-            })
+            });
     }
 
     //Get Username and Password for D2l
@@ -249,23 +267,26 @@ module.exports = function () {
 
     prompt.get(properties, function (err, result) {
         if (err) {
-            return onErr(err)
+            return onErr(err);
         }
-        promptData = {
-            username: result.username,
-            password: result.password
-        }
+
+        /* result will be undefined if env variable is used instead */
+        if (result.username)
+            promptData.username = result.username;
+        if (result.password)
+            promptData.password = result.password;
+
         if (result.domain.toLowerCase() === 'p') {
             urlPrefix = domainOptions[1];
         }
-        semester = result.semester
-        query = result.searchQuery
-        console.log('Thanks, logging in')
-        startNightmare(nightmare)
-    })
+        semester = result.semester;
+        query = result.searchQuery;
+        console.log('Thanks, logging in');
+        startNightmare(nightmare);
+    });
 
     function onErr(err) {
         console.log(err);
         return 1;
     }
-}
+};
